@@ -1,0 +1,14 @@
+name: sota-los
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - gdal>=3.7
+  - numpy
+  - pyproj
+  - requests
+  - pytest
+  - pip
+  - pip:
+      - rasterio
