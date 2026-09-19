@@ -46,7 +46,8 @@
     border-radius: var(--radius);
   }
   .prose th { font-size: .78rem; }
-  .prose td, .prose th { padding: 6px 14px; }
+  /* Base tables are nowrap for data columns; prose tables must fit the text column. */
+  .prose td, .prose th { padding: 6px 14px; white-space: normal; }
   .prose a { color: var(--primary); }
   .prose strong { color: var(--text); }
   .note {
@@ -57,6 +58,11 @@
     margin: .75rem 0;
     font-size: .88rem;
     color: #1e3a5f;
+  }
+
+  @media (max-width: 600px) {
+    .prose { padding: 20px 16px; }
+    .prose td, .prose th { padding: 6px 8px; }
   }
 </style>
 {% endblock %}
@@ -107,27 +113,29 @@
     Two margin figures capture the range:
   </p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Label</th>
-        <th>Observer point used</th>
-        <th>Interpretation</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Optimistic</strong> (<code>margin_max_m</code>)</td>
-        <td>Highest DEM pixel in the grid square</td>
-        <td>Best-case — if you can operate from the highest hilltop in your grid</td>
-      </tr>
-      <tr>
-        <td><strong>Typical</strong> (<code>margin_mean_m</code>)</td>
-        <td>Mean elevation across the grid square</td>
-        <td>Representative of a randomly-chosen operating spot</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Observer point used</th>
+          <th>Interpretation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Optimistic</strong> (<code>margin_max_m</code>)</td>
+          <td>Highest DEM pixel in the grid square</td>
+          <td>Best-case — if you can operate from the highest hilltop in your grid</td>
+        </tr>
+        <tr>
+          <td><strong>Typical</strong> (<code>margin_mean_m</code>)</td>
+          <td>Mean elevation across the grid square</td>
+          <td>Representative of a randomly-chosen operating spot</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <p>
     Verdicts and the default sort order use the <strong>optimistic</strong> margin.
@@ -138,26 +146,28 @@
 
   <h2>Verdict thresholds</h2>
 
-  <table>
-    <thead><tr><th>Verdict</th><th>Condition</th><th>Meaning</th></tr></thead>
-    <tbody>
-      <tr>
-        <td><span class="badge badge-clear">clear</span></td>
-        <td>margin ≥ 0 m</td>
-        <td>Unobstructed line-of-sight</td>
-      </tr>
-      <tr>
-        <td><span class="badge badge-marginal">marginal</span></td>
-        <td>−50 m ≤ margin &lt; 0 m</td>
-        <td>Slightly below LOS; diffraction may be enough</td>
-      </tr>
-      <tr>
-        <td><span class="badge badge-blocked">blocked</span></td>
-        <td>margin &lt; −50 m</td>
-        <td>Significantly obstructed; contact unlikely on VHF</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Verdict</th><th>Condition</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-clear">clear</span></td>
+          <td>margin ≥ 0 m</td>
+          <td>Unobstructed line-of-sight</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-marginal">marginal</span></td>
+          <td>−50 m ≤ margin &lt; 0 m</td>
+          <td>Slightly below LOS; diffraction may be enough</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-blocked">blocked</span></td>
+          <td>margin &lt; −50 m</td>
+          <td>Significantly obstructed; contact unlikely on VHF</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <h2>Atmospheric refraction</h2>
 
