@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOTA LOS — W7W Washington</title>
+  <style>
+    :root {
+      --bg:       #f4f5f7;
+      --surface:  #ffffff;
+      --border:   #dde1e7;
+      --text:     #1a1a2e;
+      --muted:    #6b7280;
+      --primary:  #1a4a8a;
+      --primary-l:#e8eef8;
+      --clear:    #166534;
+      --clear-bg: #dcfce7;
+      --marginal: #92400e;
+      --marg-bg:  #fef3c7;
+      --blocked:  #991b1b;
+      --block-bg: #fee2e2;
+      --radius:   6px;
+      --shadow:   0 1px 4px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    header h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: .5px; }
+    header span { font-size: .85rem; opacity: .75; }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* Search form */
+    .search-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .search-card h2 { font-size: .85rem; text-transform: uppercase;
+                      letter-spacing: .5px; color: var(--muted); margin-bottom: 14px; }
+    .fields { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: .8rem; font-weight: 600; color: var(--muted); }
+    .field input {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 11px;
+      font-size: .95rem;
+      width: 170px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--primary); }
+    .field select {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 11px;
+      font-size: .9rem;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .btn {
+      padding: 8px 20px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: .88; }
+    .hint { font-size: .78rem; color: var(--muted); margin-top: 10px; }
+    .hint code { background: var(--bg); padding: 1px 5px; border-radius: 3px; font-size: .8rem; }
+
+    /* Error */
+    .error {
+      background: var(--block-bg);
+      border: 1px solid #fca5a5;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: var(--blocked);
+      margin-bottom: 20px;
+      font-size: .9rem;
+    }
+
+    /* Section header */
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .section-head h2 { font-size: 1rem; font-weight: 700; }
+    .count { font-size: .82rem; color: var(--muted); }
+
+    /* Verdict badge */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+    }
+    .badge-clear    { background: var(--clear-bg);  color: var(--clear);   }
+    .badge-marginal { background: var(--marg-bg);   color: var(--marginal); }
+    .badge-blocked  { background: var(--block-bg);  color: var(--blocked); }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      font-size: .88rem;
+    }
+    th {
+      text-align: left;
+      padding: 9px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    th a { color: inherit; text-decoration: none; }
+    th a:hover { color: var(--primary); text-decoration: underline; }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--primary-l); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .dim { color: var(--muted); font-size: .82rem; }
+
+    /* Margin colour coding */
+    .margin-clear    { color: var(--clear); font-weight: 600; }
+    .margin-marginal { color: #b45309; font-weight: 600; }
+    .margin-blocked  { color: var(--blocked); }
+
+    /* Single LOS result card */
+    .los-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .los-verdict {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .los-verdict.clear    { color: var(--clear); }
+    .los-verdict.marginal { color: #b45309; }
+    .los-verdict.blocked  { color: var(--blocked); }
+    .los-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .los-item label { font-size: .75rem; text-transform: uppercase;
+                      letter-spacing: .4px; color: var(--muted); display: block; }
+    .los-item .val  { font-size: 1rem; font-weight: 600; }
+    .los-item .val.sub { font-size: .85rem; font-weight: 400; color: var(--muted); margin-top: 2px; }
+
+    /* Intro */
+    .intro {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.7;
+    }
+    .intro strong { color: var(--text); }
+    .intro ul { margin: 10px 0 0 18px; }
+    .intro li { margin-bottom: 4px; }
+
+    @media (max-width: 600px) {
+      .fields { flex-direction: column; }
+      .field input, .field select { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>SOTA LOS</h1>
+  <span>W7W / Washington line-of-sight database</span>
+</header>
+
+<main>
+
+  <!-- Search form -->
+  <div class="search-card">
+    <h2>Search</h2>
+    <form method="get" action="/">
+      <div class="fields">
+        <div class="field">
+          <label for="grid">Grid square</label>
+          <input id="grid" name="grid" type="text" placeholder="e.g. CN86mx"
+                 value="{{ raw_grid }}" maxlength="6" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="summit">Summit ref</label>
+          <input id="summit" name="summit" type="text" placeholder="e.g. W7W/MC-001"
+                 value="{{ raw_summit }}" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="status">Show</label>
+          <select id="status" name="status">
+            <option value="visible"  {% if status_filter == 'visible'  %}selected{% endif %}>Clear + marginal</option>
+            <option value="clear"    {% if status_filter == 'clear'    %}selected{% endif %}>Clear only</option>
+            <option value="marginal" {% if status_filter == 'marginal' %}selected{% endif %}>Marginal only</option>
+            <option value="blocked"  {% if status_filter == 'blocked'  %}selected{% endif %}>Blocked only</option>
+            <option value="all"      {% if status_filter == 'all'      %}selected{% endif %}>All</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="sort">Sort by</label>
+          <select id="sort" name="sort">
+            <option value="distance" {% if sort == 'distance' %}selected{% endif %}>Distance</option>
+            <option value="margin"   {% if sort == 'margin'   %}selected{% endif %}>Margin (best first)</option>
+            <option value="bearing"  {% if sort == 'bearing'  %}selected{% endif %}>Bearing</option>
+            {% if mode == 'grid' or not mode %}
+            <option value="points"   {% if sort == 'points'   %}selected{% endif %}>Points (highest first)</option>
+            {% endif %}
+            {% if mode == 'summit' %}
+            <option value="elev"     {% if sort == 'elev'     %}selected{% endif %}>Grid elevation</option>
+            {% endif %}
+          </select>
+        </div>
+        <button type="submit" class="btn">Look up</button>
+      </div>
+    </form>
+    <p class="hint">
+      <strong>Grid only</strong> → summits visible from that square &nbsp;·&nbsp;
+      <strong>Summit only</strong> → grid squares that can work that summit &nbsp;·&nbsp;
+      <strong>Both</strong> → single LOS status
+    </p>
+  </div>
+
+  <!-- Error -->
+  {% if error %}
+  <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <!-- ── No search yet ─────────────────────────────────────────────────────── -->
+  {% if not mode and not error %}
+  <div class="intro">
+    <strong>What is this?</strong> A pre-computed line-of-sight database for all W7W SOTA summits
+    and every 6-character Maidenhead grid square in Washington state.
+    <ul>
+      <li>Enter a <strong>grid square</strong> (your operating location) to see which summits you can work.</li>
+      <li>Enter a <strong>summit ref</strong> to see which grid squares have line-of-sight to it.</li>
+      <li>Enter <strong>both</strong> for a direct clear/marginal/blocked verdict.</li>
+    </ul>
+    <br>
+    <strong>Verdict rules:</strong>
+    margin ≥ 0 m → <span class="badge badge-clear">clear</span> &nbsp;
+    margin ≥ −50 m → <span class="badge badge-marginal">marginal</span> &nbsp;
+    margin &lt; −50 m → <span class="badge badge-blocked">blocked</span>
+  </div>
+  {% endif %}
+
+  <!-- ── Grid → summits ────────────────────────────────────────────────────── -->
+  {% if mode == 'grid' and results is not none %}
+  <div class="section-head">
+    <h2>
+      Summits visible from <code>{{ grid6 }}</code>
+      {% if grid_info %}
+        <span class="dim">· elev max {{ "%.0f"|format(grid_info.elev_max_m) }} m
+        · center {{ "%.4f"|format(grid_info.center_lat) }}, {{ "%.4f"|format(grid_info.center_lon) }}</span>
+      {% endif %}
+    </h2>
+    <span class="count">{{ result_count }} result{{ 's' if result_count != 1 }}</span>
+  </div>
+
+  {% if results %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Summit</th>
+          <th>Name</th>
+          <th>Region</th>
+          <th>
+            <a href="?grid={{ raw_grid }}&status={{ status_filter }}&sort=margin">Margin</a>
+          </th>
+          <th>
+            <a href="?grid={{ raw_grid }}&status={{ status_filter }}&sort=distance">Dist (km)</a>
+          </th>
+          <th>
+            <a href="?grid={{ raw_grid }}&status={{ status_filter }}&sort=bearing">Brg (°)</a>
+          </th>
+          <th>Alt (m)</th>
+          <th>
+            <a href="?grid={{ raw_grid }}&status={{ status_filter }}&sort=points">Pts</a>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td>
+            <a href="/?grid={{ raw_grid }}&summit={{ r.summit_ref }}" title="Single LOS lookup">{{ r.summit_ref }}</a>
+          </td>
+          <td>{{ r.name }}</td>
+          <td class="dim">{{ r.region }}</td>
+          <td class="num">
+            <span class="badge badge-{{ r.verdict }}">{{ r.verdict }}</span>
+            &nbsp;
+            {% if r.margin_max_m is not none %}
+              <span class="margin-{{ r.verdict }}">
+                {{ "%+.0f"|format(r.margin_max_m) }} m
+              </span>
+            {% else %}
+              <span class="dim">—</span>
+            {% endif %}
+          </td>
+          <td class="num">{{ "%.1f"|format(r.distance_km) }}</td>
+          <td class="num">{{ "%.0f"|format(r.bearing_deg) }}</td>
+          <td class="num">{{ "%.0f"|format(r.alt_m) }}</td>
+          <td class="num">{{ r.points }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="dim">No {{ status_filter }} summits found for {{ grid6 }}.</p>
+  {% endif %}
+  {% endif %}
+
+  <!-- ── Summit → grids ────────────────────────────────────────────────────── -->
+  {% if mode == 'summit' and results is not none %}
+  <div class="section-head">
+    <h2>
+      Grid squares with LOS to
+      {% if summit_info %}
+        {{ summit_ref }} — {{ summit_info.name }}
+        <span class="dim">· {{ "%.0f"|format(summit_info.alt_m) }} m · {{ summit_info.points }} pts</span>
+      {% else %}
+        {{ summit_ref }}
+      {% endif %}
+    </h2>
+    <span class="count">{{ result_count }} result{{ 's' if result_count != 1 }}</span>
+  </div>
+
+  {% if results %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Grid</th>
+          <th>
+            <a href="?summit={{ raw_summit }}&status={{ status_filter }}&sort=margin">Margin</a>
+          </th>
+          <th>
+            <a href="?summit={{ raw_summit }}&status={{ status_filter }}&sort=distance">Dist (km)</a>
+          </th>
+          <th>
+            <a href="?summit={{ raw_summit }}&status={{ status_filter }}&sort=bearing">Brg (°)</a>
+          </th>
+          <th>
+            <a href="?summit={{ raw_summit }}&status={{ status_filter }}&sort=elev">Grid elev (m)</a>
+          </th>
+          <th>Center lat</th>
+          <th>Center lon</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td>
+            <a href="/?grid={{ r.grid6 }}&summit={{ raw_summit }}" title="Single LOS lookup">{{ r.grid6 }}</a>
+          </td>
+          <td class="num">
+            <span class="badge badge-{{ r.verdict }}">{{ r.verdict }}</span>
+            &nbsp;
+            {% if r.margin_max_m is not none %}
+              <span class="margin-{{ r.verdict }}">
+                {{ "%+.0f"|format(r.margin_max_m) }} m
+              </span>
+            {% else %}
+              <span class="dim">—</span>
+            {% endif %}
+          </td>
+          <td class="num">{{ "%.1f"|format(r.distance_km) }}</td>
+          <td class="num">{{ "%.0f"|format(r.bearing_deg) }}</td>
+          <td class="num">{{ "%.0f"|format(r.elev_max_m) }}</td>
+          <td class="num dim">{{ "%.4f"|format(r.center_lat) }}</td>
+          <td class="num dim">{{ "%.4f"|format(r.center_lon) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="dim">No {{ status_filter }} grid squares found for {{ summit_ref }}.</p>
+  {% endif %}
+  {% endif %}
+
+  <!-- ── Single LOS result ─────────────────────────────────────────────────── -->
+  {% if mode == 'los' and results is not none %}
+  <div class="section-head">
+    <h2>Line-of-sight: {{ grid6 }} ↔ {{ summit_ref }}</h2>
+  </div>
+  <div class="los-card">
+    <div class="los-verdict {{ results.verdict }}">
+      {% if results.verdict == 'clear' %}✅ Clear
+      {% elif results.verdict == 'marginal' %}⚠️ Marginal
+      {% else %}❌ Blocked
+      {% endif %}
+    </div>
+    <div class="los-grid">
+      <div class="los-item">
+        <label>Grid square</label>
+        <div class="val">{{ results.grid6 }}</div>
+        <div class="val sub">{{ "%.4f"|format(results.center_lat) }}, {{ "%.4f"|format(results.center_lon) }}</div>
+        <div class="val sub">Elev max {{ "%.0f"|format(results.elev_max_m) }} m</div>
+      </div>
+      <div class="los-item">
+        <label>Summit</label>
+        <div class="val">{{ results.summit_ref }}</div>
+        <div class="val sub">{{ results.name }}, {{ results.region }}</div>
+        <div class="val sub">{{ "%.0f"|format(results.alt_m) }} m · {{ results.points }} pts</div>
+      </div>
+      <div class="los-item">
+        <label>Margin (optimistic)</label>
+        <div class="val margin-{{ results.verdict }}">
+          {% if results.margin_max_m is not none %}
+            {{ "%+.1f"|format(results.margin_max_m) }} m
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="los-item">
+        <label>Margin (typical)</label>
+        <div class="val">
+          {% if results.margin_mean_m is not none %}
+            {{ "%+.1f"|format(results.margin_mean_m) }} m
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="los-item">
+        <label>Distance</label>
+        <div class="val">{{ "%.1f"|format(results.distance_km) }} km</div>
+      </div>
+      <div class="los-item">
+        <label>Bearing (grid → summit)</label>
+        <div class="val">{{ "%.0f"|format(results.bearing_deg) }}°</div>
+      </div>
+    </div>
+    <p style="margin-top:18px; font-size:.82rem; color:var(--muted);">
+      <a href="/?grid={{ grid6 }}">← All summits from {{ grid6 }}</a>
+      &nbsp;·&nbsp;
+      <a href="/?summit={{ summit_ref }}">All grids for {{ summit_ref }} →</a>
+    </p>
+  </div>
+  {% endif %}
+
+</main>
+</body>
+</html>
