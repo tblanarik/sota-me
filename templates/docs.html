@@ -73,9 +73,10 @@
   <h2>How line-of-sight is calculated</h2>
 
   <p>
-    For each pair of (grid square, summit), the tool traces a straight line through the terrain
-    between the two points and measures how much clearance exists above the highest intervening obstacle.
-    That clearance is the <strong>margin</strong>.
+    For each summit, the tool runs a viewshed from the activator's antenna. At every point on
+    the map it finds the <strong>lowest elevation an antenna there would need to reach</strong>
+    to see the activator over the terrain in between. Comparing your antenna's elevation with
+    that height gives the <strong>margin</strong>.
   </p>
   <p>
     The terrain data comes from the
@@ -87,22 +88,39 @@
   <h2>What is the margin?</h2>
 
   <p>
-    The margin is the <strong>vertical clearance, in metres, between the radio path and the
-    terrain profile</strong> along the line between the observer and the summit.
+    The margin is <strong>how far your antenna sits above or below the lowest height that
+    can see the summit</strong>, in metres. A negative margin tells you how much higher your
+    antenna would need to be.
   </p>
   <ul>
-    <li><strong>Positive margin</strong> (e.g. <code>+120 m</code>) — the path clears the
-        terrain by that amount at its tightest point. The link is unambiguously line-of-sight.</li>
-    <li><strong>Zero margin</strong> — the path just grazes the terrain.</li>
-    <li><strong>Negative margin</strong> (e.g. <code>−35 m</code>) — the terrain blocks the
-        straight-line path by that amount. Whether a contact is possible depends on diffraction
-        and other propagation effects.</li>
+    <li><strong>Negative margin</strong> (e.g. <code>−35 m</code>) — terrain blocks the path.
+        Raise your antenna 35 m and you would have line-of-sight.</li>
+    <li><strong>Zero margin</strong> — your antenna is exactly at the height that just grazes
+        the terrain.</li>
+    <li><strong>Positive margin</strong> — the path is clear. The value does not measure spare
+        clearance: the tool finds the height you would need, not how much room is left over.
+        Clear paths usually show <code>+2 m</code>, the assumed antenna height.</li>
   </ul>
 
+  <h3>Why can a margin be deeper than any nearby mountain?</h3>
+  <p>
+    The needed height is set by the sightline from the summit over the worst obstruction,
+    extended out to you. An obstruction close to the summit tilts that sightline upward,
+    so the farther away you are, the higher it passes over you.
+  </p>
+  <p>
+    For example, from <code>CN86mx</code> near Olympia, W7W/KG-137 (North Grand Ridge,
+    433 m) shows a margin of <code>−2986 m</code>. Squak Mountain (617 m) is in the way,
+    8 km from the summit. To clear it, the sightline must climb about 1.3°, and 99 km
+    later it passes nearly 3 km above Olympia. Squak Mountain itself sticks only about
+    260 m above the direct path.
+  </p>
+
   <div class="note">
-    A negative margin does not mean a contact is impossible — VHF/UHF signals diffract over
-    terrain ridges, and a margin of −50 m can still yield a workable path, especially on 2 m.
-    Think of it as a confidence indicator, not a hard cutoff.
+    A negative margin does not mean a contact is impossible. VHF/UHF signals diffract over
+    terrain ridges, and the terrain in the way never rises above the direct path by more
+    than the margin, often by far less. A margin of −50 m can still yield a workable path,
+    especially on 2 m. Think of it as a confidence indicator, not a hard cutoff.
   </div>
 
   <h2>Optimistic vs. typical margin</h2>
@@ -158,7 +176,7 @@
         <tr>
           <td><span class="badge badge-marginal">marginal</span></td>
           <td>−50 m ≤ margin &lt; 0 m</td>
-          <td>Slightly below LOS; diffraction may be enough</td>
+          <td>Up to 50 m short of LOS; diffraction or a taller mast may be enough</td>
         </tr>
         <tr>
           <td><span class="badge badge-blocked">blocked</span></td>
@@ -183,8 +201,8 @@
   <p>
     Both the activator (at the summit) and the chaser (at the grid square representative point)
     are placed <strong>2 m above the DEM surface</strong>. This is a conservative assumption
-    consistent with a handheld radio or a low mast. Operating from a vehicle roof or a taller
-    mast would improve the margin slightly.
+    consistent with a handheld radio or a low mast. Raising your antenna adds exactly that
+    much to the margin: a 10 m mast (8 m above the assumed 2 m) turns a −8 m margin into 0 m.
   </p>
 
   <h2>Maidenhead grid squares</h2>

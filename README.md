@@ -143,11 +143,15 @@ Each summit is assessed from the **highest-elevation DEM pixel** in your grid sq
 
 | Verdict | Condition | Meaning |
 |---|---|---|
-| ✅ clear | margin ≥ 0 m | LOS exists with 2 m antenna clearance |
-| ⚠️ marginal | −50 m ≤ margin < 0 m | Terrain nearly clears; VHF may diffract through |
+| ✅ clear | margin ≥ 0 m | LOS exists from a 2 m antenna |
+| ⚠️ marginal | −50 m ≤ margin < 0 m | Up to 50 m short; VHF may diffract over, or a taller mast may clear |
 | ❌ blocked | margin < −50 m | Terrain is significantly in the way |
 
-**Margin** is the headroom in meters: how far above (positive) or below (negative) the required line-of-sight height your antenna position sits.
+**Margin** is how far your antenna sits above (positive) or below (negative) the lowest height that can see the summit. A margin of −35 m means raising your antenna 35 m would give you line of sight.
+
+Deep margins can exceed any real terrain on the path. An obstruction near the summit tilts the sightline upward, so the height you'd need grows with distance. For example, CN86mx (Olympia) to W7W/KG-137 (433 m) is −2986 m: Squak Mountain, 8 km from the summit, pushes the sightline nearly 3 km over Olympia, 99 km away.
+
+Positive margins say only that the path is clear, not how much room is left over. The optimistic margin never exceeds +2 m (the antenna height).
 
 The 50 m marginal threshold is configurable in `config.py` (`MARGINAL_THRESHOLD_M`).
 
