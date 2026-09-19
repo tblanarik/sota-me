@@ -3,6 +3,11 @@
 
 {% block head %}
 <style>
+  /* Results tables have up to 8 columns; give them more room than docs. */
+  main { max-width: 1240px; }
+  /* Summit names run up to ~47 chars — let them wrap rather than overflow. */
+  td.name { white-space: normal; min-width: 12em; }
+
   /* ── Search form ──────────────────────────────────────────────────────── */
   .fields { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
   .field  { display: flex; flex-direction: column; gap: 4px; }
@@ -168,7 +173,7 @@
             <a href="/?grid={{ raw_grid }}&summit={{ r.summit_ref }}"
                title="LOS detail" class="dim" style="font-size:.8rem">LOS</a>
           </td>
-          <td>{{ r.name }}</td>
+          <td class="name">{{ r.name }}</td>
           <td class="dim">{{ r.region }}</td>
           <td class="num">
             <span class="badge badge-{{ r.verdict }}">{{ r.verdict }}</span>
