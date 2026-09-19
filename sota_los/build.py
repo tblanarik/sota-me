@@ -44,9 +44,10 @@ def compute_los(conn, force: bool) -> None:
 
 def build_indexes(conn, force: bool) -> None:
     print("Building indexes …")
+    # No index on grid_id: the WITHOUT ROWID primary key (grid_id, summit_id)
+    # already orders by it, so grid lookups use the table itself.
     conn.executescript("""
-    CREATE INDEX IF NOT EXISTS idx_los_grid6      ON los (grid6);
-    CREATE INDEX IF NOT EXISTS idx_los_summit_ref ON los (summit_ref);
+    CREATE INDEX IF NOT EXISTS idx_los_summit ON los (summit_id);
     """)
     print("Running VACUUM and ANALYZE …")
     conn.execute("VACUUM")

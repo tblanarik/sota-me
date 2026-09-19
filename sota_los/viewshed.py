@@ -30,6 +30,7 @@ import config
 
 
 class GridStats(NamedTuple):
+    grid_id: int
     grid6: str
     center_lat: float
     center_lon: float
@@ -46,10 +47,14 @@ def run_viewshed_for_summit(
     summit_lon: float,
     summit_alt_m: float,
     dem_alt_m: float,
-) -> tuple[np.ndarray, gdal.Dataset, tuple]:
-    """Return (required_elev_array, viewshed_ds, geotransform) for one summit."""
+) -> tuple[np.ndarray, tuple]:
+    """Return (required_elev_array, geotransform) for one summit.
+
+    The geotransform returned is the *viewshed's*, not the source DEM's: with
+    maxDistance set, GDAL clips the output to a window around the observer, so
+    the two have different origins and sizes.
+    """
     ds = gdal.Open(str(dem_path))
-    gt = ds.GetGeoTransform()
 
     to_utm = Transformer.from_crs("EPSG:4326", config.TARGET_CRS, always_xy=True)
     sx, sy = to_utm.transform(summit_lon, summit_lat)
@@ -76,13 +81,14 @@ def run_viewshed_for_summit(
         heightMode=gdal.GVOT_MIN_TARGET_HEIGHT_FROM_DEM,
     )
     arr = vs_ds.GetRasterBand(1).ReadAsArray().astype(np.float32)
+    vs_gt = vs_ds.GetGeoTransform()
     ds = None
-    return arr, gt
+    return arr, vs_gt
 
 
 def _compute_los_for_summit(args: tuple) -> list[tuple]:
     """Worker function: compute LOS rows for one summit.  Returns list of row tuples."""
-    (dem_path_str, summit_ref, s_lat, s_lon, s_alt_m, s_dem_alt_m, grids) = args
+    (dem_path_str, summit_id, summit_ref, s_lat, s_lon, s_alt_m, s_dem_alt_m, grids) = args
 
     dem_path = Path(dem_path_str)
     try:
@@ -141,19 +147,30 @@ def _compute_los_for_summit(args: tuple) -> list[tuple]:
     margin_max[nodata_mask] = np.nan
     margin_mean[nodata_mask] = np.nan
 
+    # Quantise for storage — see the module docstring in sota_los.db.
+    clamp = config.MARGIN_CLAMP_M
+    q_margin_max = np.clip(np.round(margin_max), -clamp, clamp)
+    q_margin_mean = np.clip(np.round(margin_mean), -clamp, clamp)
+    q_dist_hm = np.round(dist_km * 10.0)
+    q_bearing = np.round(bearing)
+
     rows = []
     for i, g in enumerate(grids):
         if np.isnan(margin_max[i]) and np.isnan(margin_mean[i]):
             continue   # out of range or no DEM data
+        if dist_m[i] > config.MAX_DISTANCE_M:
+            # GDAL clips the viewshed to a rectangular window, whose corners reach
+            # ~1.41x maxDistance. Enforce a true circular radius here.
+            continue
         if config.PRUNE_BELOW_M is not None and margin_max[i] < config.PRUNE_BELOW_M:
             continue
         rows.append((
-            g.grid6,
-            summit_ref,
-            None if np.isnan(margin_max[i]) else float(margin_max[i]),
-            None if np.isnan(margin_mean[i]) else float(margin_mean[i]),
-            float(dist_km[i]),
-            float(bearing[i]),
+            g.grid_id,
+            summit_id,
+            None if np.isnan(q_margin_max[i]) else int(q_margin_max[i]),
+            None if np.isnan(q_margin_mean[i]) else int(q_margin_mean[i]),
+            int(q_dist_hm[i]),
+            int(q_bearing[i]),
         ))
     return rows
 
@@ -172,12 +189,13 @@ def compute_los(
             return n
 
     grids_raw = conn.execute(
-        "SELECT grid6, center_lat, center_lon, elev_max_m, max_lat, max_lon, elev_mean_m FROM grids"
+        "SELECT grid_id, grid6, center_lat, center_lon, elev_max_m, max_lat, max_lon, elev_mean_m "
+        "FROM grids"
     ).fetchall()
     grids = [GridStats(*tuple(r)) for r in grids_raw]
 
     summits = conn.execute(
-        "SELECT summit_ref, lat, lon, alt_m, COALESCE(dem_alt_m, alt_m) FROM summits"
+        "SELECT summit_id, summit_ref, lat, lon, alt_m, COALESCE(dem_alt_m, alt_m) FROM summits"
     ).fetchall()
 
     dem_path_str = str(config.DEM_PATH)
@@ -189,7 +207,7 @@ def compute_los(
     conn.commit()
 
     work = [
-        (dem_path_str, r[0], r[1], r[2], r[3], r[4], grids)
+        (dem_path_str, r[0], r[1], r[2], r[3], r[4], r[5], grids)
         for r in summits
     ]
 
@@ -200,7 +218,7 @@ def compute_los(
             if result:
                 conn.executemany(
                     """INSERT OR REPLACE INTO los
-                       (grid6, summit_ref, margin_max_m, margin_mean_m, distance_km, bearing_deg)
+                       (grid_id, summit_id, margin_max_m, margin_mean_m, distance_hm, bearing_deg)
                        VALUES (?, ?, ?, ?, ?, ?)""",
                     result,
                 )

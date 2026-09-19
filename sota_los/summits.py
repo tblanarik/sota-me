@@ -47,9 +47,9 @@ def load_summits(conn: sqlite3.Connection, force: bool = False) -> int:
     conn.execute("DELETE FROM summits")
     conn.executemany(
         """INSERT INTO summits
-           (summit_ref, name, region, lat, lon, alt_m, dem_alt_m, points)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        rows,
+           (summit_id, summit_ref, name, region, lat, lon, alt_m, dem_alt_m, points)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [(i, *r) for i, r in enumerate(rows)],
     )
     set_meta(conn, "summits_date", date.today().isoformat())
     set_meta(conn, "summits_source", config.SUMMITS_URL)

@@ -6,6 +6,7 @@ from pathlib import Path
 ANTENNA_HEIGHT_M: float = 2.0           # chaser antenna height above representative point
 OBSERVER_ANTENNA_HEIGHT_M: float = 2.0  # activator antenna height above true summit
 MARGINAL_THRESHOLD_M: float = -50.0     # margins in [MARGINAL_THRESHOLD_M, 0) are "marginal"
+MARGIN_CLAMP_M: int = 32_000            # margins stored as whole metres clamped to ±this (2-byte varint)
 MAX_DISTANCE_M: float = 250_000.0       # viewshed radius
 PRUNE_BELOW_M: float | None = None      # drop rows with margin_max_m below this (None = keep all)
 CURVATURE_COEFF: float = 0.85714        # 4/3-earth atmospheric refraction coefficient

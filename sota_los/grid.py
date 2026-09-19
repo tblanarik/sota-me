@@ -169,9 +169,10 @@ def build_grid(conn: sqlite3.Connection, force: bool = False) -> int:
 
     conn.execute("DELETE FROM grids")
     conn.executemany(
-        """INSERT INTO grids (grid6, center_lat, center_lon, elev_max_m, max_lat, max_lon, elev_mean_m)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        rows,
+        """INSERT INTO grids
+           (grid_id, grid6, center_lat, center_lon, elev_max_m, max_lat, max_lon, elev_mean_m)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        [(i, *r) for i, r in enumerate(rows)],
     )
     set_meta(conn, "grid_count", str(len(rows)))
     conn.commit()

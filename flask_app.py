@@ -80,14 +80,14 @@ def close_db(exc: BaseException | None) -> None:
 # ── sort helpers ──────────────────────────────────────────────────────────────
 
 _GRID_SORT = {
-    "distance": "l.distance_km ASC",
+    "distance": "l.distance_hm ASC",
     "margin":   "l.margin_max_m DESC",
     "bearing":  "l.bearing_deg ASC",
-    "points":   "s.points DESC, l.distance_km ASC",
+    "points":   "s.points DESC, l.distance_hm ASC",
 }
 
 _SUMMIT_SORT = {
-    "distance": "l.distance_km ASC",
+    "distance": "l.distance_hm ASC",
     "margin":   "l.margin_max_m DESC",
     "bearing":  "l.bearing_deg ASC",
     "elev":     "g.elev_max_m DESC",
@@ -144,16 +144,16 @@ def index():
             if grid6 and summit_ref:
                 mode = "los"
                 row = db.execute("""
-                    SELECT l.grid6, l.summit_ref,
+                    SELECT g.grid6, s.summit_ref,
                            s.name, s.region, s.alt_m, s.points,
                            g.center_lat, g.center_lon, g.elev_max_m,
                            l.margin_max_m, l.margin_mean_m,
-                           l.distance_km, l.bearing_deg
-                    FROM los l
-                    JOIN summits s ON l.summit_ref = s.summit_ref
-                    JOIN grids   g ON l.grid6      = g.grid6
-                    WHERE l.grid6 = ? AND l.summit_ref = ?
-                """, (grid6, summit_ref)).fetchone()
+                           l.distance_hm / 10.0 AS distance_km, l.bearing_deg
+                    FROM grids g
+                    JOIN summits s ON s.summit_ref = ?
+                    JOIN los l ON l.grid_id = g.grid_id AND l.summit_id = s.summit_id
+                    WHERE g.grid6 = ?
+                """, (summit_ref, grid6)).fetchone()
 
                 if row is None:
                     error = (
@@ -173,16 +173,16 @@ def index():
                 if grid_info is None:
                     error = f"Grid {grid6!r} not found — it may be outside the computed area."
                 else:
-                    order = _GRID_SORT.get(sort, "l.distance_km ASC")
+                    order = _GRID_SORT.get(sort, "l.distance_hm ASC")
                     rows = db.execute(f"""
-                        SELECT l.summit_ref, s.name, s.region, s.alt_m, s.points,
+                        SELECT s.summit_ref, s.name, s.region, s.alt_m, s.points,
                                l.margin_max_m, l.margin_mean_m,
-                               l.distance_km, l.bearing_deg
+                               l.distance_hm / 10.0 AS distance_km, l.bearing_deg
                         FROM los l
-                        JOIN summits s ON l.summit_ref = s.summit_ref
-                        WHERE l.grid6 = ?
+                        JOIN summits s ON s.summit_id = l.summit_id
+                        WHERE l.grid_id = ?
                         ORDER BY {order}
-                    """, (grid6,)).fetchall()
+                    """, (grid_info["grid_id"],)).fetchall()
 
                     results = [
                         {**dict(r), "verdict": verdict(r["margin_max_m"])}
@@ -199,17 +199,17 @@ def index():
                 if summit_info is None:
                     error = f"Summit {summit_ref!r} not found."
                 else:
-                    order = _SUMMIT_SORT.get(sort, "l.distance_km ASC")
+                    order = _SUMMIT_SORT.get(sort, "l.distance_hm ASC")
                     rows = db.execute(f"""
-                        SELECT l.grid6,
+                        SELECT g.grid6,
                                g.center_lat, g.center_lon, g.elev_max_m,
                                l.margin_max_m, l.margin_mean_m,
-                               l.distance_km, l.bearing_deg
+                               l.distance_hm / 10.0 AS distance_km, l.bearing_deg
                         FROM los l
-                        JOIN grids g ON l.grid6 = g.grid6
-                        WHERE l.summit_ref = ?
+                        JOIN grids g ON g.grid_id = l.grid_id
+                        WHERE l.summit_id = ?
                         ORDER BY {order}
-                    """, (summit_ref,)).fetchall()
+                    """, (summit_info["summit_id"],)).fetchall()
 
                     results = [
                         {**dict(r), "verdict": verdict(r["margin_max_m"])}

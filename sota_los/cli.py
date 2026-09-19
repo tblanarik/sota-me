@@ -77,31 +77,34 @@ def main(argv=None) -> None:
 
     margin_col = "margin_mean_m" if args.mean else "margin_max_m"
     sort_map = {
-        "distance": "distance_km ASC",
-        "margin": f"{margin_col} DESC",
-        "bearing": "bearing_deg ASC",
+        "distance": "l.distance_hm ASC",
+        "margin": f"l.{margin_col} DESC",
+        "bearing": "l.bearing_deg ASC",
     }
     order_by = sort_map[args.sort]
 
     q = f"""
-        SELECT l.summit_ref, s.name, s.region, s.alt_m, s.points,
-               l.margin_max_m, l.margin_mean_m, l.distance_km, l.bearing_deg
+        SELECT s.summit_ref, s.name, s.region, s.alt_m, s.points,
+               l.margin_max_m, l.margin_mean_m,
+               l.distance_hm / 10.0 AS distance_km, l.bearing_deg
         FROM los l
-        JOIN summits s ON l.summit_ref = s.summit_ref
-        WHERE l.grid6 = ?
+        JOIN summits s ON s.summit_id = l.summit_id
+        WHERE l.grid_id = ?
     """
-    params = [grid6]
+    params = [grid_row["grid_id"]]
     if args.summit is not None:
         summit_ref = args.summit.upper()
-        row = conn.execute("SELECT 1 FROM summits WHERE summit_ref = ?", (summit_ref,)).fetchone()
+        row = conn.execute(
+            "SELECT summit_id FROM summits WHERE summit_ref = ?", (summit_ref,)
+        ).fetchone()
         if row is None:
             print(f"ERROR: Summit {summit_ref!r} not found in database.", file=sys.stderr)
             sys.exit(1)
-        q += " AND l.summit_ref = ?"
-        params.append(summit_ref)
+        q += " AND l.summit_id = ?"
+        params.append(row["summit_id"])
     if args.max_km is not None:
-        q += " AND l.distance_km <= ?"
-        params.append(args.max_km)
+        q += " AND l.distance_hm <= ?"
+        params.append(args.max_km * 10)
     q += f" ORDER BY {order_by}"
 
     rows = conn.execute(q, params).fetchall()
