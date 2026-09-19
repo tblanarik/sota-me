@@ -201,6 +201,8 @@ Changing any constant that affects LOS computation requires rerunning `compute_l
 - **One point per grid square.** A 6-char subsquare is ~5 km wide. The "optimistic" representative point is the highest pixel in that square, which may be in a corner far from your actual position.
 - **Washington only.** The DEM and summit list cover W7W; other associations are not included.
 - **No Fresnel zones.** Grazing-angle paths flagged as "clear" may still suffer diffraction loss in practice.
+- **Pairs at the edge of the 250 km range read as blocked.** 9,371 grid/summit pairs between 246.6 and 250 km (0.08% of rows) have no optimistic margin: the grid center is inside the viewshed radius, but its highest pixel is outside it. The CLI and web app show these as ❌ blocked, when really they were never computed.
+- **One UTM zone for the whole state.** Viewsheds run on UTM zone 10N (EPSG:32610), which nominally covers 126°W–120°W, but eastern Washington reaches 116.9°W. An independent ray trace agreed with the stored results there too, but distortion that far outside the zone hasn't been measured.
 - **Static data.** The database reflects the SOTA summit list as of the build date. Re-run `fetch_summits` + `compute_los` to refresh.
 
 ---

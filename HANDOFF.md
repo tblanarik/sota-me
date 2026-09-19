@@ -58,11 +58,13 @@ correction. This change is **uncommitted**.
 
 ## What needs doing
 
-1. **Commit** the `dem_alt_m` change (`sota_los/viewshed.py`, `sota_los/summits.py`).
+1. ~~**Commit** the `dem_alt_m` change~~ — done in `d38545f`.
 2. **Deploy** `data/sota_los.sqlite` (379 MB) to PythonAnywhere. It needs the paid
    tier for `scp`, because the file is too large for the web uploader.
-3. **Delete** `data/sota_los.sqlite.legacy` (1.2 GB). It holds pre-migration and
-   pre-fix data, so it is wrong anyway.
+3. ~~**Delete** `data/sota_los.sqlite.legacy`~~ — done.
+
+The open questions below are now also recorded in the README's Limitations
+section, so this file can be deleted once step 2 is done.
 
 ## Units (unchanged, easy to misread)
 
