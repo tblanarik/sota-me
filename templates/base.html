@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SOTA LOS — W7W Washington{% endblock %}</title>
+  <style>
+    :root {
+      --bg:       #f4f5f7;
+      --surface:  #ffffff;
+      --border:   #dde1e7;
+      --text:     #1a1a2e;
+      --muted:    #6b7280;
+      --primary:  #1a4a8a;
+      --primary-l:#e8eef8;
+      --clear:    #166534;
+      --clear-bg: #dcfce7;
+      --marginal: #92400e;
+      --marg-bg:  #fef3c7;
+      --blocked:  #991b1b;
+      --block-bg: #fee2e2;
+      --radius:   6px;
+      --shadow:   0 1px 4px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ── Header / nav ───────────────────────────────────────────────────── */
+    header {
+      background: var(--primary);
+      color: #fff;
+      padding: 0 20px;
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px 12px 0;
+      text-decoration: none;
+      color: #fff;
+    }
+    .header-brand h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: .5px; }
+    .header-brand span { font-size: .82rem; opacity: .65; }
+    nav {
+      display: flex;
+      align-items: stretch;
+      margin-left: auto;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      color: rgba(255,255,255,.8);
+      text-decoration: none;
+      font-size: .88rem;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+      transition: color .15s, border-color .15s;
+    }
+    nav a:hover          { color: #fff; }
+    nav a.active         { color: #fff; border-bottom-color: rgba(255,255,255,.7); }
+
+    /* ── Shared layout ──────────────────────────────────────────────────── */
+    main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* ── Verdict badges ─────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+    }
+    .badge-clear    { background: var(--clear-bg);  color: var(--clear);   }
+    .badge-marginal { background: var(--marg-bg);   color: var(--marginal); }
+    .badge-blocked  { background: var(--block-bg);  color: var(--blocked); }
+
+    /* ── Tables ─────────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      font-size: .88rem;
+    }
+    th {
+      text-align: left;
+      padding: 9px 12px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    th a { color: inherit; text-decoration: none; }
+    th a:hover { color: var(--primary); text-decoration: underline; }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--primary-l); }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .dim { color: var(--muted); font-size: .82rem; }
+    .margin-clear    { color: var(--clear);    font-weight: 600; }
+    .margin-marginal { color: #b45309;          font-weight: 600; }
+    .margin-blocked  { color: var(--blocked); }
+
+    /* ── Cards ──────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .card-label {
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Error ──────────────────────────────────────────────────────────── */
+    .error {
+      background: var(--block-bg);
+      border: 1px solid #fca5a5;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: var(--blocked);
+      margin-bottom: 20px;
+      font-size: .9rem;
+    }
+
+    /* ── Section head ───────────────────────────────────────────────────── */
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .section-head h2 { font-size: 1rem; font-weight: 700; }
+    .count { font-size: .82rem; color: var(--muted); }
+
+    /* ── External link icon ─────────────────────────────────────────────── */
+    .ext { font-size: .75rem; opacity: .5; vertical-align: super; margin-left: 1px; }
+
+    @media (max-width: 600px) {
+      nav a { padding: 0 10px; font-size: .8rem; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<header>
+  <a class="header-brand" href="/">
+    <div>
+      <h1>SOTA LOS</h1>
+      <span>W7W / Washington</span>
+    </div>
+  </a>
+  <nav>
+    <a href="/" class="{% if active_page == 'home' %}active{% endif %}">Home</a>
+    <a href="/docs" class="{% if active_page == 'docs' %}active{% endif %}">Docs</a>
+  </nav>
+</header>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

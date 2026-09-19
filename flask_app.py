@@ -96,6 +96,11 @@ _SUMMIT_SORT = {
 
 # ── routes ────────────────────────────────────────────────────────────────────
 
+@app.route("/docs")
+def docs():
+    return render_template("docs.html")
+
+
 @app.route("/health")
 def health():
     return jsonify({"ok": True, "db": str(DB_PATH), "db_exists": DB_PATH.exists()})

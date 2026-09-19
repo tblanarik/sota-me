@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% set active_page = "docs" %}
+{% block title %}Docs — SOTA LOS{% endblock %}
+
+{% block head %}
+<style>
+  .prose {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 32px 36px;
+    max-width: 720px;
+    line-height: 1.75;
+  }
+  .prose h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 2rem 0 .6rem;
+    padding-bottom: .3rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--primary);
+  }
+  .prose h2:first-child { margin-top: 0; }
+  .prose h3 {
+    font-size: .95rem;
+    font-weight: 700;
+    margin: 1.2rem 0 .3rem;
+    color: var(--text);
+  }
+  .prose p  { margin-bottom: .75rem; }
+  .prose ul { margin: .4rem 0 .75rem 1.4rem; }
+  .prose li { margin-bottom: .3rem; }
+  .prose code {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: .85em;
+    font-family: ui-monospace, monospace;
+  }
+  .prose table {
+    width: auto;
+    margin: .5rem 0 1rem;
+    font-size: .88rem;
+    border-radius: var(--radius);
+  }
+  .prose th { font-size: .78rem; }
+  .prose td, .prose th { padding: 6px 14px; }
+  .prose a { color: var(--primary); }
+  .prose strong { color: var(--text); }
+  .note {
+    background: #eff6ff;
+    border-left: 3px solid var(--primary);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 10px 14px;
+    margin: .75rem 0;
+    font-size: .88rem;
+    color: #1e3a5f;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="prose">
+
+  <h2>How line-of-sight is calculated</h2>
+
+  <p>
+    For each pair of (grid square, summit), the tool traces a straight line through the terrain
+    between the two points and measures how much clearance exists above the highest intervening obstacle.
+    That clearance is the <strong>margin</strong>.
+  </p>
+  <p>
+    The terrain data comes from the
+    <strong>Copernicus GLO-30 Digital Elevation Model</strong> (30 m native resolution),
+    resampled to 90 m for the viewshed calculation. The study area covers Washington state
+    with a quarter-degree buffer.
+  </p>
+
+  <h2>What is the margin?</h2>
+
+  <p>
+    The margin is the <strong>vertical clearance, in metres, between the radio path and the
+    terrain profile</strong> along the line between the observer and the summit.
+  </p>
+  <ul>
+    <li><strong>Positive margin</strong> (e.g. <code>+120 m</code>) — the path clears the
+        terrain by that amount at its tightest point. The link is unambiguously line-of-sight.</li>
+    <li><strong>Zero margin</strong> — the path just grazes the terrain.</li>
+    <li><strong>Negative margin</strong> (e.g. <code>−35 m</code>) — the terrain blocks the
+        straight-line path by that amount. Whether a contact is possible depends on diffraction
+        and other propagation effects.</li>
+  </ul>
+
+  <div class="note">
+    A negative margin does not mean a contact is impossible — VHF/UHF signals diffract over
+    terrain ridges, and a margin of −50 m can still yield a workable path, especially on 2 m.
+    Think of it as a confidence indicator, not a hard cutoff.
+  </div>
+
+  <h2>Optimistic vs. typical margin</h2>
+
+  <p>
+    Each 6-character Maidenhead grid square covers roughly <strong>4 km × 5 km</strong> on the
+    ground in Washington. You might operate from anywhere inside it, at a variety of elevations.
+    Two margin figures capture the range:
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Label</th>
+        <th>Observer point used</th>
+        <th>Interpretation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Optimistic</strong> (<code>margin_max_m</code>)</td>
+        <td>Highest DEM pixel in the grid square</td>
+        <td>Best-case — if you can operate from the highest hilltop in your grid</td>
+      </tr>
+      <tr>
+        <td><strong>Typical</strong> (<code>margin_mean_m</code>)</td>
+        <td>Mean elevation across the grid square</td>
+        <td>Representative of a randomly-chosen operating spot</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Verdicts and the default sort order use the <strong>optimistic</strong> margin.
+    If a summit shows <span class="badge badge-marginal">marginal</span> on optimistic but
+    the typical margin is deeply negative, you would need to find an elevated spot in your
+    grid to have a realistic chance.
+  </p>
+
+  <h2>Verdict thresholds</h2>
+
+  <table>
+    <thead><tr><th>Verdict</th><th>Condition</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-clear">clear</span></td>
+        <td>margin ≥ 0 m</td>
+        <td>Unobstructed line-of-sight</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-marginal">marginal</span></td>
+        <td>−50 m ≤ margin &lt; 0 m</td>
+        <td>Slightly below LOS; diffraction may be enough</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-blocked">blocked</span></td>
+        <td>margin &lt; −50 m</td>
+        <td>Significantly obstructed; contact unlikely on VHF</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Atmospheric refraction</h2>
+
+  <p>
+    Radio waves follow a slightly curved path through the atmosphere, effectively bending
+    toward the earth. This extends the radio horizon beyond the geometric horizon.
+    The calculation uses the standard <strong>4/3-earth model</strong>
+    (refraction coefficient 0.857), which is a reasonable average for temperate climates.
+    Unusual atmospheric conditions (ducting, temperature inversions) are not modelled.
+  </p>
+
+  <h2>Antenna heights</h2>
+  <p>
+    Both the activator (at the summit) and the chaser (at the grid square representative point)
+    are placed <strong>2 m above the DEM surface</strong>. This is a conservative assumption
+    consistent with a handheld radio or a low mast. Operating from a vehicle roof or a taller
+    mast would improve the margin slightly.
+  </p>
+
+  <h2>Maidenhead grid squares</h2>
+  <p>
+    This tool uses <strong>6-character subsquares</strong> (e.g. <code>CN86mx</code>).
+    Each subsquare spans 5 arcminutes of longitude × 2.5 arcminutes of latitude —
+    roughly 6 km east-west by 4.5 km north-south in Washington state.
+    Enter the grid in any case; it is normalised to the canonical form
+    (<code>AB12cd</code> — two uppercase letters, two digits, two lowercase letters).
+  </p>
+
+  <h2>Distance limit</h2>
+  <p>
+    Only grid–summit pairs within <strong>250 km</strong> are included in the database.
+    Beyond this range, contacts on typical VHF/UHF modes are exceptional even with clear LOS.
+  </p>
+
+  <h2>Data sources</h2>
+  <ul>
+    <li><strong>Elevation:</strong> Copernicus GLO-30 DEM via AWS Open Data</li>
+    <li><strong>Summits:</strong> <a href="https://www.sotadata.org.uk/" target="_blank" rel="noopener">SOTAdata</a>
+        — W7W association summits list</li>
+    <li><strong>Summit pages:</strong> linked to <a href="https://sotl.as/" target="_blank" rel="noopener">sotl.as</a>
+        for activation history, photos, and comments</li>
+  </ul>
+
+  <h2>Limitations</h2>
+  <ul>
+    <li>The DEM represents bare-earth or canopy elevation — dense forest can add effective
+        terrain height that the model does not capture.</li>
+    <li>The observer point is the DEM maximum or mean for the whole grid square, not a
+        specific location you choose. Use the optimistic vs. typical figures to bracket
+        your actual situation.</li>
+    <li>The model does not account for buildings, power lines, or other man-made obstructions.</li>
+    <li>Propagation modes such as tropospheric scatter, meteor scatter, or aurora are not
+        relevant to this LOS tool.</li>
+  </ul>
+
+</div>
+{% endblock %}
