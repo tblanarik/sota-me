@@ -1,75 +1,70 @@
-# Handoff — viewshed geotransform bug + compact schema
+# Handoff — deploy the rebuilt LOS database
 
-Working doc for picking this up in a fresh session. Delete once the rebuild is
-done and verified.
+Working doc for picking this up in a fresh session. Delete once the database is
+deployed.
 
 ## TL;DR
 
-A one-line bug corrupted **every margin value** in the database. It is fixed in
-the code but the database has not been rebuilt yet. **Do not deploy the current
-`data/sota_los.sqlite`.** The next step is a ~1 hour recompute.
+The viewshed geotransform bug (every margin sampled from the wrong pixel) was
+fixed in `4621631`, and on 2026-09-19 `data/sota_los.sqlite` was rebuilt and
+verified. **The current `data/sota_los.sqlite` is good to deploy.** The next step
+is the PythonAnywhere upload.
 
 ---
 
-## What was found
+## Rebuild result (2026-09-19)
 
-### 1. Viewshed geotransform mismatch (critical, fixed in code, DB not rebuilt)
+`compute_los --force` took 226 s on 19 workers, then `build_indexes` ran.
 
-`run_viewshed_for_summit` in `sota_los/viewshed.py` returned the viewshed array
-paired with the **source DEM's** geotransform. With `maxDistance` set,
-`gdal.ViewshedGenerate` clips its output to a window around the observer, so the
-two have different origins and sizes.
-
-Measured on W7W/WE-037 (Needham Hill):
-
-| | size | origin easting |
+| | before (pre-fix) | after |
 |---|---|---|
-| Source DEM | 7216 × 5138 px | 323,439 |
-| Viewshed | 3486 × 4943 px | 659,139 |
+| rows | 11,785,513 | 12,015,310 |
+| file size | 406 MB | 379 MB |
+| max distance | 649.8 km | 250.0 km |
+| grids with rows | 6,103 / 8,142 | 8,142 / 8,142 |
+| eastern grids (lon > −118.5) with rows | 0 / 1,674 | 1,674 / 1,674 |
 
-Offset = 335,700 m = **3,730 columns of error in every pixel lookup**. The
-summit's own pixel should be column 2,779; the code computed 6,509, past the
-array's 3,486 width.
+The file shrank even though eastern WA now has rows, because the 250 km cap
+removed the ~22% of old rows that were past it.
 
-Three symptoms, one cause:
+### Verification
 
-- **Every margin is wrong** wherever the bad index still landed in bounds.
-- **2,039 of 8,142 grids** (all east of ~lon −118.5) had zero rows — their
-  indices fell outside the array entirely.
-- **22.6% of rows exceeded the 250 km cap** (max 649.8 km). `distance_hm` came
-  from `geod.inv` and was always correct; the margin came from an unrelated
-  pixel. The two were never connected, which is why the cap looked unenforced.
+- **Independent line-of-sight trace**: a straight ray trace through the DEM
+  (bilinear sampling, the same 4/3-earth curvature term) on 3,000 random pairs
+  agrees with the stored verdict (clear/marginal/blocked) on **98.8%** of them, with
+  a median signed difference of 0 m and a correlation of 0.984. The pre-fix data
+  scored against the same trace managed 88.0% (most paths are blocked either
+  way), with a median error of 867 m and a correlation of 0.757. GDAL's
+  `GVM_Edge` mode is a raster approximation, not a ray trace, so small
+  disagreements near the verdict boundary are expected: within ±200 m of it,
+  92.5% agree and the median difference is 0 m.
+- **Self-visibility**: every summit has a row for its own grid, and 96.9% of those
+  are clear.
+- **Known paths** (all clear, stored value = trace value): Rainier from Seattle
+  (CN87uo), Rainier and Adams from Yakima (CN96ro), Baker from Seattle. The
+  pre-fix DB had Rainier-from-Seattle as marginal (−41 m).
+- CLI and the 20 tests pass against the rebuilt DB.
 
-**Fix applied:** return `vs_ds.GetGeoTransform()` instead of the source `gt`.
+### Also changed
 
-**Verified on one summit:** the summit's own pixel now reports 874.1 m required
-against an 879 m summit (a summit sees itself), and eastern grids produce 1,674
-rows where they produced 0. Only spot-checked — the full rebuild is what
-actually proves it.
+`summits.dem_alt_m` (feeds the §2.3 observer height correction) was only ever
+populated by a step that is not in the codebase. `compute_los` now refreshes it
+from the DEM on every run via `dem.read_elevation_at_points`. The values it
+produces match the ones already stored exactly, so this rebuild's results are
+unaffected. It stops a future `fetch_summits --force` from silently dropping the
+correction. This change is **uncommitted**.
 
-### 2. 250 km cap now enforced explicitly
+---
 
-Added a `dist_m[i] > config.MAX_DISTANCE_M` guard in `_compute_los_for_summit`.
-Still needed after the geotransform fix because GDAL's clip window is
-rectangular — its corners reach ~1.41 × maxDistance (~354 km).
+## What needs doing
 
-User confirmed 250 km is the intended cap.
+1. **Commit** the `dem_alt_m` change (`sota_los/viewshed.py`, `sota_los/summits.py`).
+2. **Deploy** `data/sota_los.sqlite` (379 MB) to PythonAnywhere. It needs the paid
+   tier for `scp`, because the file is too large for the web uploader.
+3. **Delete** `data/sota_los.sqlite.legacy` (1.2 GB). It holds pre-migration and
+   pre-fix data, so it is wrong anyway.
 
-### 3. Compact schema migration (done, working)
-
-Database went 1.21 GB → 406 MB with all 11,785,513 pairs retained, driven by a
-PythonAnywhere storage limit.
-
-- Dense integer IDs replace text keys (`grid6` + `summit_ref` cost 18 bytes/row)
-- Measures stored as quantised `INTEGER`; SQLite's varint encoding spends 1 byte
-  on near-zero margins and 2 on deep ones, putting precision at the verdict
-  boundary
-
-Row size ~55 bytes → ~18. No index on `los.grid_id` — the `WITHOUT ROWID`
-primary key `(grid_id, summit_id)` already covers it, and adding one costs
-224 MB for nothing.
-
-**Units — easy to misread:**
+## Units (unchanged, easy to misread)
 
 | column | unit |
 |---|---|
@@ -77,75 +72,17 @@ primary key `(grid_id, summit_id)` already covers it, and adding one costs
 | `distance_hm` | hectometres — divide by 10 for km |
 | `bearing_deg` | whole degrees |
 
-Read queries join on integer IDs and alias `distance_hm / 10.0 AS distance_km`
-so the Jinja templates need no changes.
-
-Rounding shifts ~5,869 rows (0.05%) across a verdict boundary by up to 0.5 m —
-accepted noise on a 90 m DEM, not a bug to chase.
-
----
-
-## What needs doing
-
-1. **Rebuild the LOS data** (the actual next step):
-
-   ```bash
-   .venv/bin/python -m sota_los.build --stage compute_los --force
-   ```
-
-   ~15 s per viewshed × 2,762 summits across available cores ≈ 1 hour. Then:
-
-   ```bash
-   .venv/bin/python -m sota_los.build --stage build_indexes
-   ```
-
-2. **Verify the rebuild** before trusting it:
-   - Eastern WA grids (lon > −118.5) must have rows — they had zero before
-   - No row should exceed 250 km: `SELECT MAX(distance_hm) FROM los` ≤ 2500
-   - Spot-check a summit sees itself: required elev ≈ summit alt
-   - Sanity-check a few known-clear paths against the CLI
-
-3. **Expect the DB to grow** past 406 MB despite the 250 km cap — eastern
-   Washington gains ~2,039 grids' worth of rows it never had.
-
-4. **Then** deploy to PythonAnywhere (paid tier needed for `scp`; the file is
-   too large for the web uploader).
-
-5. Delete `data/sota_los.sqlite.legacy` (1.2 GB) once satisfied — it holds the
-   pre-migration data, which is also pre-fix and therefore wrong anyway.
-
----
-
-## Current state
-
-**Uncommitted** (nothing has been committed this session):
-
-```
- M config.py            MARGIN_CLAMP_M added
- M flask_app.py         queries join on integer IDs
- M sota_los/build.py    single idx_los_summit index
- M sota_los/cli.py      queries join on integer IDs
- M sota_los/db.py       compact schema
- M sota_los/grid.py     grid_id assignment
- M sota_los/summits.py  summit_id assignment
- M sota_los/viewshed.py geotransform fix + 250 km guard + quantised writes
-?? sota_los/migrate.py  legacy -> compact converter (idempotent)
-```
-
-Databases:
-
-- `data/sota_los.sqlite` — 388 MB, compact schema, **margins are wrong**
-- `data/sota_los.sqlite.legacy` — 1.2 GB, old schema, margins also wrong
-
-Tests: 20 passing. Web app and CLI both work against the compact schema.
-
 ## Open questions
 
-- `summits.dem_alt_m` is never populated. `summits.py:103` says "filled in by dem
-  stage" but nothing writes it, so `viewshed.py` always falls back to `alt_m` via
-  `COALESCE`. May be intentional; worth a look since it feeds the observer height
-  correction.
-- The DEM is reprojected to UTM zone 10N (`EPSG:32610`), which nominally covers
-  lon −126..−120. Eastern WA reaches −116.9, well out of zone. It did not cause
-  this bug — the DEM has valid data throughout and the raster covers it — but
-  distortion out there is worth a sanity check once the rebuild lands.
+- **Positive margins carry no information.** `GVOT_MIN_TARGET_HEIGHT_FROM_DEM`
+  outputs `max(required, DEM)`, so for a clear path the required elevation equals
+  the DEM value, and `margin_max_m` is exactly `ANTENNA_HEIGHT_M` (+2). No row
+  exceeds +2, and 979,852 rows sit at exactly +2. Sorting by margin cannot rank
+  clear paths, and "headroom" in the README is only meaningful below zero.
+  `margin_mean_m` can exceed +2, but only because the mean elevation differs from
+  the centre pixel, not because of real clearance.
+- **9,371 rows have NULL `margin_max_m`**, all 246.6–250 km out. The grid centre is
+  within 250 km but its max pixel falls outside GDAL's radius. The CLI shows NULL
+  as "blocked", which is really "unknown". That is 0.08% of rows.
+- **UTM zone 10N** nominally covers lon −126..−120, and eastern WA reaches −116.9.
+  The independent trace agrees there too, but distortion is untested beyond that.

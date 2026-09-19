@@ -100,7 +100,7 @@ def _parse_csv(csv_path: Path) -> list[tuple]:
                 lat,
                 lon,
                 alt_m,
-                None,   # dem_alt_m filled in by dem stage
+                None,   # dem_alt_m filled in by compute_los stage
                 points,
             ))
 

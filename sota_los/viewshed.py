@@ -175,6 +175,29 @@ def _compute_los_for_summit(args: tuple) -> list[tuple]:
     return rows
 
 
+def _fill_summit_dem_alt(conn: sqlite3.Connection) -> None:
+    """Sample the DEM at every summit into summits.dem_alt_m.
+
+    Feeds the observer height correction (spec §2.3). Refreshed on every run so it
+    always matches the DEM the viewsheds use; a summit with no DEM data keeps NULL
+    and falls back to alt_m (no correction).
+    """
+    from sota_los.dem import read_elevation_at_points
+
+    rows = conn.execute("SELECT summit_id, lat, lon FROM summits").fetchall()
+    ids = [r[0] for r in rows]
+    elev = read_elevation_at_points(
+        config.DEM_PATH,
+        np.array([r[1] for r in rows]),
+        np.array([r[2] for r in rows]),
+    )
+    conn.executemany(
+        "UPDATE summits SET dem_alt_m = ? WHERE summit_id = ?",
+        [(None if np.isnan(e) else float(e), sid) for sid, e in zip(ids, elev)],
+    )
+    conn.commit()
+
+
 def compute_los(
     conn: sqlite3.Connection,
     force: bool = False,
@@ -194,6 +217,7 @@ def compute_los(
     ).fetchall()
     grids = [GridStats(*tuple(r)) for r in grids_raw]
 
+    _fill_summit_dem_alt(conn)
     summits = conn.execute(
         "SELECT summit_id, summit_ref, lat, lon, alt_m, COALESCE(dem_alt_m, alt_m) FROM summits"
     ).fetchall()
